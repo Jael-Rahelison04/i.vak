@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+	<dict>
+		
+		<!-- MESSAGE D'AUTORISATION PURLES APPELS (optionnel mais recommandé) -->
+		<key>NSCameraUsageDescription</key>
+		<string>Cette application a besoin d'accéder à l'appel téléphonique pour contacter les établissements scolaires</string>
+		
+		<!-- DESCRIPTION POUR LE PARTAGE (optionnel) -->
+		<key>NSPhotoLibraryUsageDescription</key>
+		<string>Cette application peut partager des informations via les applications de partage</string>
+		<key>LSApplicationQueriesSchemes</key>
+		<array>
+			<string>tel</string>
+			<string>telprompt</string>
+		</array>
+		<!-- 1. Autorise la localisation en arrière-plan (obligatoire pour Geolocator) -->
+		<key>UIBackgroundModes</key>
+		<array>
+			<string>location</string>
+		</array>
+		<!-- 2. Description pour la permission "quand l'app est utilisée" -->
+		<key>NSLocationWhenInUseUsageDescription</key>
+		<string>Cette application a besoin de votre position pour afficher les écoles près de vous.</string>
+		<!-- 3. Description pour la permission "toujours" (si tu veux un jour l’activer) -->
+		<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+		<string>Cette application a besoin de votre position en arrière-plan pour vous localiser même quand l’app est fermée.</string>
+		<!-- 4. LA CLÉ MAGIQUE : Arrête immédiatement le service GPS quand l’app passe en arrière-plan -->
+		<key>UIApplicationExitsOnSuspend</key>
+		<false/>
+		<key>NSLocalNetworkUsageDescription</key>
+		<string>Utilisé pour vérifier la connectivité réseau.</string>
+		<key>NSLocationWhenInUseUsageDescription</key>
+		<string>Nous avons besoin de votre localisation pour afficher votre position sur la carte.</string>
+		<key>NSLocationAlwaysUsageDescription</key>
+		<string>Nous avons besoin de votre localisation pour afficher votre position sur la carte.</string>
+		<key>CFBundleDevelopmentRegion</key>
+		<string>$(DEVELOPMENT_LANGUAGE)</string>
+		<key>CFBundleDisplayName</key>
+		<string>Annuaire Scolaire</string>
+		<key>CFBundleExecutable</key>
+		<string>$(EXECUTABLE_NAME)</string>
+		<key>CFBundleIdentifier</key>
+		<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+		<key>CFBundleInfoDictionaryVersion</key>
+		<string>6.0</string>
+		<key>CFBundleName</key>
+		<string>i.vak</string>
+		<key>CFBundlePackageType</key>
+		<string>APPL</string>
+		<key>CFBundleShortVersionString</key>
+		<string>$(FLUTTER_BUILD_NAME)</string>
+		<key>CFBundleSignature</key>
+		<string>????</string>
+		<key>CFBundleVersion</key>
+		<string>$(FLUTTER_BUILD_NUMBER)</string>
+		<key>LSRequiresIPhoneOS</key>
+		<true/>
+		<key>UILaunchStoryboardName</key>
+		<string>LaunchScreen</string>
+		<key>UIMainStoryboardFile</key>
+		<string>Main</string>
+		<key>UISupportedInterfaceOrientations</key>
+		<array>
+			<string>UIInterfaceOrientationPortrait</string>
+			<string>UIInterfaceOrientationLandscapeLeft</string>
+			<string>UIInterfaceOrientationLandscapeRight</string>
+		</array>
+		<key>UISupportedInterfaceOrientations~ipad</key>
+		<array>
+			<string>UIInterfaceOrientationPortrait</string>
+			<string>UIInterfaceOrientationPortraitUpsideDown</string>
+			<string>UIInterfaceOrientationLandscapeLeft</string>
+			<string>UIInterfaceOrientationLandscapeRight</string>
+		</array>
+		<key>CADisableMinimumFrameDurationOnPhone</key>
+		<true/>
+		<key>UIApplicationSupportsIndirectInputEvents</key>
+		<true/>
+		<key>UIStatusBarHidden</key>
+		<false/>
+	</dict>
+</plist>
