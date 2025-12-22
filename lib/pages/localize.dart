@@ -23,7 +23,7 @@ class LocalizePage extends StatefulWidget {
     this.initialIsOnline = true,
     super.key,
     this.initialZoom = 15.0,
-    this.locationAccuracy = LocationAccuracy.high,
+    this.locationAccuracy = LocationAccuracy.medium,
   });
   @override
   State<LocalizePage> createState() => LocalizePageState();

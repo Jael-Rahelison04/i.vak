@@ -13,6 +13,11 @@ class LocationManager {
   final LocationAccuracy locationAccuracy;
   final double initialZoom;
 
+  bool _isInitialized = false;
+
+  DateTime? _lastUpdate;
+  LatLng? _lastPosition;
+
   bool _hasStartedLocation = false;
   bool _isListening = false;
   LatLng? _currentPosition;
@@ -34,12 +39,10 @@ class LocationManager {
     _isListening = false;
     _debounceTimer?.cancel();
     _debounceTimer = null;
-    if (_positionStreamSubscription != null) {
-      await _positionStreamSubscription!.cancel();
-      _positionStreamSubscription = null;
-    }
     try {
-      await Geolocator.getServiceStatusStream().drain();
+      await _positionStreamSubscription?.cancel();
+      _positionStreamSubscription = null;
+
       await Future.delayed(const Duration(milliseconds: 400));
       debugPrint('[LocationManager] HUAWEI : GPS libéré en 400ms');
     } catch (e) {
@@ -71,24 +74,28 @@ class LocationManager {
           Geolocator.getPositionStream(
             locationSettings: LocationSettings(
               accuracy: locationAccuracy,
-              distanceFilter: 0, // pas de filtre distance
+              distanceFilter: 10, // pas de filtre distance
             ),
           ).listen(
             (position) {
               final now = DateTime.now();
-              if (now.difference(_lastUpdate).inSeconds >= 60) {
-                _lastUpdate = now;
+              final newPos = LatLng(position.latitude, position.longitude);
 
-                final newPos = LatLng(position.latitude, position.longitude);
+              if (_lastUpdate == null ||
+                  now.difference(_lastUpdate!).inSeconds >= 60 ||
+                  (_lastPosition != null &&
+                      Geolocator.distanceBetween(
+                            _lastPosition!.latitude,
+                            _lastPosition!.longitude,
+                            newPos.latitude,
+                            newPos.longitude,
+                          ) >
+                          10)) {
+                _lastUpdate = now;
+                _lastPosition = newPos;
                 _debounceTimer?.cancel();
                 _debounceTimer = Timer(const Duration(milliseconds: 400), () {
-                  _currentPosition = newPos;
-                  _isLoading = false;
-                  onPositionUpdated(newPos);
-                  onLoadingStateChanged(false);
-                  debugPrint(
-                    '[LocationManager] Position mise à jour toutes les 60s',
-                  );
+                  _updatePosition(newPos);
                 });
               }
             },
@@ -100,6 +107,14 @@ class LocationManager {
     } catch (e) {
       debugPrint('[LocationManager] Erreur démarrage stream: $e');
     }
+  }
+
+  void _updatePosition(LatLng newPos) {
+    _currentPosition = newPos;
+    _isLoading = false;
+    onPositionUpdated(newPos);
+    onLoadingStateChanged(false);
+    debugPrint('[LocationManager] Position mise à jour: $newPos');
   }
 
   void stopLoading() {
@@ -207,11 +222,16 @@ class LocationManager {
   }
 
   void initializeWithDelay(bool isOnline) async {
-    if (_currentPosition == null && !_hasStartedLocation && isOnline) {
-      _hasStartedLocation = true;
+    if (!_isInitialized && isOnline) {
+      _isInitialized = true;
       startLoadingTimeout();
       checkAndRequestLocationService();
     }
+  }
+
+  void resetInitialization() {
+    _isInitialized = false;
+    _hasStartedLocation = false;
   }
 
   // Setters pour mettre à jour l'état

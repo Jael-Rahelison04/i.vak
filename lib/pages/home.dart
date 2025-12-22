@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:annuaire_scolaire/services/data_service.dart';
 import 'package:annuaire_scolaire/widgets/help_dialog.dart';
-
 import 'package:annuaire_scolaire/widgets/year_selection_dialog.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:flutter/material.dart';
@@ -199,8 +198,6 @@ class _HomePageState extends State<HomePage> {
       barrierColor: Colors.black54,
       builder: (context) => const HelpDialog(),
     );
-    // Ajouter l'action d'aide ici
-    _showSnackBar('Aide', Colors.blue);
   }
 
   Future<void> _onItemTapped(int index) async {

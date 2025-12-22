@@ -69,7 +69,6 @@ class SearchPageState extends State<SearchPage>
           const SnackBar(
             content: Text('Interface de recherche réinitialisée'),
             duration: Duration(seconds: 2),
-
             backgroundColor: Color(0xff036B54),
           ),
         );
