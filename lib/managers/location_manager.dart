@@ -60,28 +60,37 @@ class LocationManager {
   void startListeningLocation() async {
     if (_isListening || _positionStreamSubscription != null) return;
     _isListening = true;
+
+    DateTime _lastUpdate = DateTime.now();
+
     try {
       await _positionStreamSubscription?.cancel();
       _positionStreamSubscription = null;
+
       _positionStreamSubscription =
           Geolocator.getPositionStream(
             locationSettings: LocationSettings(
               accuracy: locationAccuracy,
-              distanceFilter: 5,
+              distanceFilter: 0, // pas de filtre distance
             ),
           ).listen(
             (position) {
-              final newPos = LatLng(position.latitude, position.longitude);
-              _debounceTimer?.cancel();
-              _debounceTimer = Timer(const Duration(milliseconds: 400), () {
-                _currentPosition = newPos;
-                _isLoading = false;
-                onPositionUpdated(newPos);
-                onLoadingStateChanged(false);
-                debugPrint(
-                  '[LocationManager] Position stream → position mise à jour',
-                );
-              });
+              final now = DateTime.now();
+              if (now.difference(_lastUpdate).inSeconds >= 60) {
+                _lastUpdate = now;
+
+                final newPos = LatLng(position.latitude, position.longitude);
+                _debounceTimer?.cancel();
+                _debounceTimer = Timer(const Duration(milliseconds: 400), () {
+                  _currentPosition = newPos;
+                  _isLoading = false;
+                  onPositionUpdated(newPos);
+                  onLoadingStateChanged(false);
+                  debugPrint(
+                    '[LocationManager] Position mise à jour toutes les 60s',
+                  );
+                });
+              }
             },
             onError: (e) {
               debugPrint('[LocationManager] Erreur stream GPS: $e');
