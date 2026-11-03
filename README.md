@@ -1,5 +1,3 @@
-<img width="720" height="1600" alt="Screenshot_20261103-153456" src="https://github.com/user-attachments/assets/a32b14f1-c5dd-4b99-8034-b92fca655ee3" /># i-vak
-
 **i-vak** (anciennement *Annuaire-Scolaire*) est une application mobile développée avec Flutter. Elle permet de [décrire en une phrase : trouver et consulter les établissements scolaires de Madagascar].
 
 ## Fonctionnalités
