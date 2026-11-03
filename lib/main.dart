@@ -1,11 +1,12 @@
-import 'package:annuaire_scolaire/pages/school_bottom_sheet.dart';
 import 'package:annuaire_scolaire/pages/splash_screen.dart';
 import 'package:flutter/material.dart';
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const MyApp());
 }
 
+// main.dart optimisé
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -13,8 +14,9 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      navigatorKey: SchoolBottomSheet.navigatorKey,
-      home: const SplashScreen(), // Démarrer avec l'ecran d'accueil'
+      // Supprime la ligne navigatorKey ici
+      theme: ThemeData(primarySwatch: Colors.teal),
+      home: const SplashScreen(),
     );
   }
 }

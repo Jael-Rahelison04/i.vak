@@ -11,7 +11,7 @@ class HelpDialog extends StatelessWidget {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16.0)),
       elevation: 10,
       child: Container(
-        constraints: const BoxConstraints(maxWidth: 500, maxHeight: 600),
+        constraints: const BoxConstraints(maxWidth: 500, maxHeight: 650),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -25,10 +25,10 @@ class HelpDialog extends StatelessWidget {
                   topRight: Radius.circular(16),
                 ),
               ),
-              child: Center(
+              child: const Center(
                 child: Text(
                   'À propos de i.vak',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.w600,
                     color: Colors.white,
@@ -47,57 +47,37 @@ class HelpDialog extends StatelessWidget {
                   children: [
                     // Section Objectif
                     _buildSection(
-                      title: '🎯 Objectif de l\'application',
+                      title: '🎯 Notre mission',
                       content:
-                          'i.vak est une application conçue pour centraliser et rendre accessibles les informations sur les établissements scolaires. Elle permet aux utilisateurs de rechercher, localiser et consulter les détails des écoles, tout en offrant des outils pratiques comme l’itinéraire, l’appel direct ou le partage d’informations. Son objectif est de faciliter la communication et l’orientation des élèves, parents, enseignants et administrateurs vers les établissements scolaires.',
+                          'i.vak est l\'annuaire numérique officiel conçu pour simplifier l\'accès aux informations des établissements scolaires de la région Vakinankaratra. Notre but est de faciliter l\'orientation et la communication entre les élèves, les parents, le corps enseignant et l\'administration.',
                     ),
 
                     const SizedBox(height: 24),
 
                     // Section Fonctionnalités
                     _buildSection(
-                      title: '🚀 Fonctionnalités principales',
+                      title: '🚀 Fonctionnalités clés',
                       content: '',
                       children: [
                         _buildFeatureItem(
                           icon: Icons.search,
                           text:
-                              'Recherche avancée : Trouvez facilement un établissement scolaire grâce à des filtres précis. Combinez ces critères pour obtenir des résultats ciblés et pertinents.',
+                              'Recherche intelligente : Trouvez rapidement un établissement grâce à nos filtres multicritères avancés.',
                         ),
                         _buildFeatureItem(
                           icon: Icons.location_on,
                           text:
-                              'Localisation : Visualisez votre position et les établissements scolaires sur la carte, avec itinéraires, appel ou partage des informations.',
+                              'Cartographie : Visualisez les écoles sur une carte interactive et générez votre itinéraire en un clic.',
                         ),
                         _buildFeatureItem(
-                          icon: Icons.calendar_today,
+                          icon: Icons.info_outline,
                           text:
-                              'Sélection d\'année : Choisissez l\'année scolaire pour accéder aux données correspondantes',
-                        ),
-                        _buildFeatureItem(
-                          icon: Icons.info,
-                          text:
-                              'Détails complets : Consultez les informations sur le personnel, diplômes, sections par classe et taux de réussite.',
-                        ),
-                        _buildFeatureItem(
-                          icon: Icons.phone,
-                          text:
-                              'Actions rapides : Appelez directement ou partagez les informations de l’établissement en un clic.',
-                        ),
-                        _buildFeatureItem(
-                          icon: Icons.directions,
-                          text:
-                              'Itinéraires : Affichez la distance et le temps de trajet vers un établissement.',
-                        ),
-                        _buildFeatureItem(
-                          icon: Icons.restart_alt,
-                          text:
-                              'Réinitialisation : Remettez à zéro vos filtres de recherche pour repartir sur une nouvelle recherche.',
+                              'Fiches détaillées : Accédez aux informations essentielles (taux de réussite, effectifs, filières proposées).',
                         ),
                         _buildFeatureItem(
                           icon: Icons.wifi_off,
                           text:
-                              'Gestion de la connectivité : Vous pouvez toujours effectuer des recherches même sans internet, mais les cartes et la localisation ne sont disponibles qu’avec une connexion.',
+                              'Mode hors-ligne : Consultez vos données téléchargées à tout moment, même sans connexion internet (hors cartographie).',
                         ),
                       ],
                     ),
@@ -106,66 +86,90 @@ class HelpDialog extends StatelessWidget {
 
                     // Section Comment utiliser
                     _buildSection(
-                      title: '📱 Comment utiliser l\'application',
+                      title: '📱 Guide d\'utilisation rapide',
                       content: '',
                       children: [
                         _buildStepItem(
                           number: '1',
                           text:
-                              'Utilisez l\'onglet "Rechercher" pour trouver des personnes spécifiques',
+                              'Utilisez l\'onglet "Recherche" pour cibler un établissement précis.',
                         ),
                         _buildStepItem(
                           number: '2',
                           text:
-                              'Passez à l\'onglet "Localiser" pour voir les emplacements sur la carte',
+                              'Consultez l\'onglet "Carte" pour une vue géographique des écoles à proximité.',
                         ),
                         _buildStepItem(
                           number: '3',
                           text:
-                              'Utilisez le bouton de sélection d\'année pour changer d\'année scolaire',
+                              'Sélectionnez l\'année scolaire en haut de l\'écran pour actualiser les statistiques.',
                         ),
                         _buildStepItem(
                           number: '4',
                           text:
-                              'Tirez vers le bas pour rafraîchir manuellement les données',
-                        ),
-                        _buildStepItem(
-                          number: '5',
-                          text:
-                              'Utilisez le bouton reset pour réinitialiser vos filtres de recherche',
+                              'Glissez l\'écran vers le bas (Pull-to-refresh) pour synchroniser les dernières données.',
                         ),
                       ],
                     ),
 
                     const SizedBox(height: 24),
 
-                    // Section Informations techniques
+                    // Section Contact et Support (Nouvelle)
                     _buildSection(
-                      title: '⚙️ Informations techniques',
+                      title: '✉️ Nous contacter',
                       content:
-                          'Cette application utilise les dernières technologies Flutter pour offrir une expérience utilisateur fluide et réactive. Les données sont stockées localement pour un accès rapide et sont synchronisées avec le serveur lorsque vous êtes connecté à Internet.',
+                          'Une suggestion, une mise à jour d\'information ou un problème technique ? L\'équipe i.vak est à votre écoute :',
+                      children: [
+                        const SizedBox(height: 12),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 12,
+                            horizontal: 16,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xff036B54).withOpacity(0.05),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: const Color(0xff036B54).withOpacity(0.2),
+                            ),
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(
+                                Icons.email,
+                                color: Color(0xff036B54),
+                                size: 24,
+                              ),
+                              SizedBox(width: 12),
+                              Expanded(
+                                child: Text(
+                                  'annuairevakinankaratra@gmail.com',
+                                  style: TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                    color: Color(0xff036B54),
+                                    fontFamily: 'Lato',
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
 
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 24),
 
                     // Message de fin
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: const Color(0xff036B54).withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: const Color(0xff036B54).withOpacity(0.3),
-                        ),
-                      ),
-                      child: const Text(
-                        'Nous espérons que cette application vous sera utile dans vos démarches quotidiennes. Pour toute suggestion ou problème technique, contactez le support informatique.',
-                        style: TextStyle(
-                          fontSize: 14,
-                          color: Color(0xff036B54),
-                          fontStyle: FontStyle.italic,
-                        ),
+                    Center(
+                      child: Text(
+                        'Version 1.0.0\nMerci d\'utiliser i.vak !',
                         textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey.shade600,
+                          fontFamily: 'Lato',
+                        ),
                       ),
                     ),
                   ],
@@ -201,12 +205,13 @@ class HelpDialog extends StatelessWidget {
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    elevation: 3,
+                    elevation:
+                        0, // Retrait de l'élévation pour un design plus moderne (Flat)
                   ),
                   child: const Text(
-                    'Compris',
+                    'Fermer',
                     style: TextStyle(
-                      fontSize: 18,
+                      fontSize: 16,
                       fontWeight: FontWeight.w600,
                       fontFamily: 'Lato',
                     ),
@@ -232,7 +237,7 @@ class HelpDialog extends StatelessWidget {
           title,
           style: const TextStyle(
             fontSize: 18,
-            fontWeight: FontWeight.w600,
+            fontWeight: FontWeight.w700,
             color: Color(0xff036B54),
             fontFamily: 'Lato',
           ),
@@ -259,7 +264,10 @@ class HelpDialog extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: const Color(0xff036B54), size: 20),
+          Container(
+            margin: const EdgeInsets.only(top: 2),
+            child: Icon(icon, color: const Color(0xff036B54), size: 20),
+          ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
@@ -284,19 +292,21 @@ class HelpDialog extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            width: 28,
-            height: 28,
+            width: 24,
+            height: 24,
+            margin: const EdgeInsets.only(top: 2),
             decoration: BoxDecoration(
-              color: const Color(0xff036B54),
-              borderRadius: BorderRadius.circular(14),
+              color: const Color(0xff036B54).withOpacity(0.1),
+              border: Border.all(color: const Color(0xff036B54)),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Center(
               child: Text(
                 number,
                 style: const TextStyle(
-                  color: Colors.white,
+                  color: Color(0xff036B54),
                   fontWeight: FontWeight.bold,
-                  fontSize: 14,
+                  fontSize: 12,
                 ),
               ),
             ),

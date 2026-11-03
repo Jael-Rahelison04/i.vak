@@ -14,15 +14,34 @@ class YearSelectionDialog extends StatefulWidget {
 class _YearSelectionDialogState extends State<YearSelectionDialog> {
   String? _selectedFile;
   late Future<List<String>> _availableFilesFuture;
+
+  Map<String, bool> _loadingStatus = {};
+
   bool _isLoading = false;
+
+  Map<String, bool> _downloadedStatus = {};
+
+  Future<void> _loadDownloadedStatus(List<String> files) async {
+    final Map<String, bool> status = {};
+    for (final file in files) {
+      final isDownloaded = await DataService.isFileDownloaded(file);
+      status[file] = isDownloaded;
+    }
+    setState(() {
+      _downloadedStatus = status;
+    });
+  }
 
   // Dans _YearSelectionDialogState
   @override
   void initState() {
     super.initState();
-    // Utiliser scanExcelFiles() au lieu de getAvailableExcelFiles()
-    _availableFilesFuture = DataService.scanExcelFiles(); // ← CHANGEMENT ICI
+    _availableFilesFuture = DataService.getCloudExcelFiles(); // ← inclut Cloud
+    //_availableFilesFuture = DataService.scanExcelFiles();
     _loadCurrentSelection();
+    _availableFilesFuture.then((files) {
+      _loadDownloadedStatus(files);
+    });
   }
 
   Future<void> _loadCurrentSelection() async {
@@ -100,18 +119,21 @@ class _YearSelectionDialogState extends State<YearSelectionDialog> {
             final files = snapshot.data!;
 
             if (files.isEmpty) {
+              debugPrint(
+                '⚠️ GitHub accessible mais aucun fichier Excel détecté',
+              );
               return Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.folder_open, color: Colors.orange, size: 48),
+                  const Icon(Icons.cloud_off, color: Colors.orange, size: 48),
                   const SizedBox(height: 16),
                   const Text(
-                    'Aucun fichier Excel trouvé\n dans le dossier data/',
+                    'Aucun fichier Excel trouvé\nsur le serveur en ligne.',
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Ajoutez des fichiers .xlsx dans data/',
+                    'Vérifiez le dépôt GitHub.',
                     style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                     textAlign: TextAlign.center,
                   ),
@@ -128,35 +150,75 @@ class _YearSelectionDialogState extends State<YearSelectionDialog> {
                 ),
                 const SizedBox(height: 16),
                 ...files.map((fileName) {
-                  return RadioListTile<String>(
-                    title: Text(
-                      _formatFileName(fileName),
-                      style: const TextStyle(fontSize: 14),
-                    ),
+                  final isDownloaded = _downloadedStatus[fileName] ?? false;
+                  final isLoading = _loadingStatus[fileName] ?? false;
+
+                  return ListTile(
+                    title: Text(_formatFileName(fileName)),
                     subtitle: Text(
                       fileName,
                       style: const TextStyle(fontSize: 12, color: Colors.grey),
                     ),
-                    value: fileName,
-                    groupValue: _selectedFile,
-                    onChanged: _isLoading
-                        ? null
-                        : (value) {
-                            setState(() => _selectedFile = value);
-                          },
-                    activeColor: const Color(0xff036B54),
-                    controlAffinity: ListTileControlAffinity.trailing,
+                    trailing: isLoading
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Color(0xff036B54),
+                            ),
+                          )
+                        : isDownloaded
+                        ? Radio<String>(
+                            value: fileName,
+                            groupValue: _selectedFile,
+                            onChanged: (value) {
+                              setState(() => _selectedFile = value);
+                            },
+                            activeColor: const Color(0xff036B54),
+                          )
+                        : IconButton(
+                            icon: const Icon(
+                              Icons.download_rounded,
+                              color: Color(0xff036B54),
+                            ),
+                            onPressed: () async {
+                              setState(() {
+                                _loadingStatus[fileName] = true;
+                              });
+                              final success =
+                                  await DataService.downloadExcelFile(fileName);
+                              if (success) {
+                                await _loadDownloadedStatus(snapshot.data!);
+                                setState(() {
+                                  _selectedFile = fileName;
+                                  _loadingStatus[fileName] = false;
+                                });
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'Fichier $fileName téléchargé avec succès',
+                                    ),
+                                    backgroundColor: Colors.green,
+                                  ),
+                                );
+                              } else {
+                                setState(() {
+                                  _loadingStatus[fileName] = false;
+                                });
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text(
+                                      'Échec du téléchargement de $fileName',
+                                    ),
+                                    backgroundColor: Colors.red,
+                                  ),
+                                );
+                              }
+                            },
+                          ),
                   );
                 }).toList(),
-                if (_isLoading) ...[
-                  const SizedBox(height: 16),
-                  const CircularProgressIndicator(color: Color(0xff036B54)),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Chargement des nouvelles données...',
-                    style: TextStyle(fontSize: 12, color: Colors.grey),
-                  ),
-                ],
               ],
             );
           },
@@ -168,7 +230,10 @@ class _YearSelectionDialogState extends State<YearSelectionDialog> {
           child: const Text('Annuler', style: TextStyle(color: Colors.grey)),
         ),
         ElevatedButton(
-          onPressed: _isLoading || _selectedFile == null
+          onPressed:
+              _isLoading ||
+                  _selectedFile == null ||
+                  !(_downloadedStatus[_selectedFile] ?? false)
               ? null
               : _applySelection,
           style: ElevatedButton.styleFrom(

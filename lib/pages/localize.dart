@@ -1,14 +1,13 @@
 import 'dart:async';
-import 'package:annuaire_scolaire/managers/navigation_manager.dart';
-import 'package:annuaire_scolaire/managers/location_manager.dart';
-import 'package:annuaire_scolaire/managers/etablissement_manager.dart';
-import 'package:annuaire_scolaire/services/connectivity_service.dart';
-import 'package:annuaire_scolaire/services/dialog_service.dart';
-import 'package:annuaire_scolaire/services/location_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:latlong2/latlong.dart';
+
+import 'package:annuaire_scolaire/managers/navigation_manager.dart';
+import 'package:annuaire_scolaire/managers/location_manager.dart';
+import 'package:annuaire_scolaire/managers/etablissement_manager.dart';
+import 'package:annuaire_scolaire/services/location_service.dart';
 import '../model/etablissement.dart';
 
 void log(String message) {
@@ -19,39 +18,38 @@ class LocalizePage extends StatefulWidget {
   final bool initialIsOnline;
   final double initialZoom;
   final LocationAccuracy locationAccuracy;
+
   const LocalizePage({
-    this.initialIsOnline = true,
     super.key,
+    this.initialIsOnline = true,
     this.initialZoom = 15.0,
     this.locationAccuracy = LocationAccuracy.medium,
   });
+
   @override
   State<LocalizePage> createState() => LocalizePageState();
 }
 
 class LocalizePageState extends State<LocalizePage>
     with AutomaticKeepAliveClientMixin {
-  // Managers
-  NavigationManager? _navigationManager;
-  LocationManager? _locationManager;
-  EtablissementManager? _etablissementManager;
-
-  // État local simplifié
-  late bool _isOnline;
-  bool _isCheckingConnection = false;
-  bool _mapIsReady = false;
-  MapController _mapController = MapController();
   static const LatLng _defaultLocation = LatLng(-18.8792, 47.5079);
+  static const Color _primaryColor = Color(0xff036B54);
 
-  // Getters pour accéder à l'état des managers
-  bool get _isNavigating => _navigationManager?.isNavigating ?? false;
-  List<LatLng> get _polylinePoints => _navigationManager?.polylinePoints ?? [];
-  LatLng? get _currentPosition => _locationManager?.currentPosition;
-  bool get _isLoading => _locationManager?.isLoading ?? true;
-  List<Etablissement> get _etablissements =>
-      _etablissementManager?.etablissements ?? [];
-  Etablissement? get _selectedEtablissement =>
-      _etablissementManager?.selectedEtablissement;
+  // --- Managers (Non-nullables car initialisés dans initState) ---
+  late NavigationManager _navigationManager;
+  late LocationManager _locationManager;
+  late EtablissementManager _etablissementManager;
+
+  // --- Contrôleurs et Notifiers ---
+  final MapController _mapController = MapController();
+  bool _mapIsReady = false;
+
+  // Remplacent les nombreux setState() par une mise à jour ciblée
+  final ValueNotifier<bool> _isOnlineNotifier = ValueNotifier(true);
+  final ValueNotifier<LatLng?> _currentPositionNotifier = ValueNotifier(null);
+  final ValueNotifier<List<LatLng>> _routeNotifier = ValueNotifier([]);
+  final ValueNotifier<bool> _isNavigatingNotifier = ValueNotifier(false);
+  final ValueNotifier<bool> _isLoadingNotifier = ValueNotifier(true);
 
   @override
   bool get wantKeepAlive => true;
@@ -59,334 +57,307 @@ class LocalizePageState extends State<LocalizePage>
   @override
   void initState() {
     super.initState();
-    _isOnline = widget.initialIsOnline;
-    log('initState: LocalizePage créé');
-
+    _isOnlineNotifier.value = widget.initialIsOnline;
     _initializeManagers();
-    _mapController = MapController();
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _locationManager?.initializeWithDelay(_isOnline);
+      _locationManager.initializeWithDelay(_isOnlineNotifier.value);
     });
-
-    _locationManager?.checkAndRequestLocationService();
   }
 
   void _initializeManagers() {
-    // Navigation Manager
+    // 1. Navigation Manager
     _navigationManager = NavigationManager(
       context: context,
       onRouteCalculated: (points) {
-        // SUPPRIMER l'assignation - le NavigationManager gère déjà _polylinePoints
-        setState(() {}); // Juste notifier le rebuild
+        _routeNotifier.value = points;
+        _isNavigatingNotifier.value = true;
       },
       onNavigationStopped: () {
-        setState(() {}); // Juste notifier le rebuild
+        _routeNotifier.value = [];
+        _isNavigatingNotifier.value = false;
       },
       onMapMoveToCurrentPosition: _moveToCurrentPosition,
       initialZoom: widget.initialZoom,
     );
 
-    // Location Manager
+    // 2. Location Manager
     _locationManager = LocationManager(
       context: context,
       onPositionUpdated: (position) {
-        _navigationManager?.setCurrentPosition(position);
-        _etablissementManager?.setCurrentPosition(position);
-        _moveToCurrentPosition();
-        setState(() {});
+        _currentPositionNotifier.value =
+            position; // Notifie uniquement les marqueurs concernés
+        _navigationManager.setCurrentPosition(position);
+        _etablissementManager.setCurrentPosition(position);
+
+        // On recentre automatiquement si on est en navigation
+        if (_isNavigatingNotifier.value) {
+          _moveToCurrentPosition();
+        }
       },
       onLoadingStateChanged: (isLoading) {
-        setState(() {});
+        _isLoadingNotifier.value = isLoading;
       },
       locationAccuracy: widget.locationAccuracy,
       initialZoom: widget.initialZoom,
     );
 
-    // Etablissement Manager
+    // 3. Etablissement Manager
     _etablissementManager = EtablissementManager(
-      onEtablissementSelected: (etab) {
-        setState(() {});
-      },
-      onEtablissementsUpdated: (etablissements) {
-        setState(() {});
-      },
+      onEtablissementSelected: (_) => setState(
+        () {},
+      ), // Le seul gardé car il impacte la bottom sheet (externe)
+      onEtablissementsUpdated: (_) => setState(() {}), // Pareil
       onStartNavigation: (etablissement) {
-        _navigationManager?.startNavigation(etablissement);
-        setState(() {});
+        _navigationManager.startNavigation(etablissement);
       },
       parentContext: context,
     );
 
-    // Chargement initial des établissements
-    _loadEtablissements();
-  }
-
-  Future<void> _loadEtablissements() async {
-    try {
-      await _etablissementManager?.loadEtablissements();
-    } catch (e) {
-      log('Erreur cache: $e');
-      DialogService.showSnackBar(context, 'Données indisponibles hors ligne');
-    }
+    _etablissementManager.loadEtablissements();
   }
 
   void _moveToCurrentPosition() {
-    if (_currentPosition != null && _mapIsReady) {
-      _mapController.move(_currentPosition!, widget.initialZoom);
-    } else {
-      debugPrint(
-        '[LocalizePage] Pas de position disponible, recentrage ignoré',
-      );
+    final pos = _currentPositionNotifier.value;
+    if (pos != null && _mapIsReady) {
+      _mapController.move(pos, widget.initialZoom);
     }
   }
 
-  Future<void> checkConnection() async {
-    setState(() {
-      _isCheckingConnection = true;
-    });
-
-    bool online = await ConnectivityService.checkConnection();
-
-    if (!mounted) return;
-
-    setState(() {
-      _isOnline = online;
-      _isCheckingConnection = false;
-    });
-
-    if (_isOnline) {
-      await _locationManager?.checkAndRequestLocationService();
-    } else {
-      await _locationManager?.stopListeningLocation();
-    }
-  }
+  // --- Méthodes publiques (appelées par Home) ---
 
   void notifyConnectivityChanged(bool isOnline) {
-    if (!mounted) return;
-    if (_isOnline == isOnline) return;
+    if (_isOnlineNotifier.value == isOnline) return;
 
-    setState(() {
-      _isOnline = isOnline;
-      log('Connectivité mise à jour dans LocalizePage : $_isOnline');
-    });
+    _isOnlineNotifier.value = isOnline;
+    log('Connectivité mise à jour: $isOnline');
 
-    if (_isOnline) {
-      _locationManager?.checkAndRequestLocationService();
+    if (isOnline) {
+      _locationManager.checkAndRequestLocationService();
     } else {
-      _locationManager?.stopListeningLocation();
+      _locationManager.stopListeningLocation();
     }
   }
 
   void updateEtablissements(List<Etablissement> newList) {
-    _etablissementManager?.updateEtablissements(newList);
+    _etablissementManager.updateEtablissements(newList);
   }
 
   Future<void> refreshLocation() async {
-    await _locationManager?.refreshLocation();
+    await _locationManager.refreshLocation();
   }
 
-  List<Marker> _getSchoolMarkers() {
-    if (_currentPosition == null) return [];
-    return _etablissementManager?.getSchoolMarkers(_currentPosition!) ?? [];
-  }
+  // --- Construction de l'UI ---
 
   @override
   Widget build(BuildContext context) {
     super.build(context);
 
-    if (!_isOnline) {
-      if (_isCheckingConnection) {
-        return Container(
-          color: Colors.grey[300],
-          child: const Center(
-            child: CircularProgressIndicator(color: Color(0xff036B54)),
-          ),
-        );
-      } else {
-        return Container(
-          color: Colors.grey[300],
-          child: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text(
-                  "Aucune connexion internet, veuillez vous connecter s'il vous plaît !",
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontFamily: 'Lato',
-                    color: Color(0xff036B54),
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 20),
-                ElevatedButton.icon(
-                  onPressed: checkConnection,
-                  icon: const Icon(
-                    Icons.refresh,
-                    color: Color(0xff036B54),
-                    size: 30,
-                  ),
-                  label: const Text(
-                    "Actualiser",
-                    style: TextStyle(
-                      fontFamily: 'Lato',
-                      color: Color(0xff036B54),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      }
-    }
-
     return Scaffold(
       body: Stack(
         children: [
-          FlutterMap(
-            mapController: _mapController,
-            options: MapOptions(
-              initialCenter: _currentPosition ?? _defaultLocation,
-              initialZoom: widget.initialZoom,
-              onMapReady: () {
-                setState(() {
-                  _mapIsReady = true;
-                  _navigationManager?.setMapReady(true);
-                });
-                _moveToCurrentPosition();
-                log('Carte prête, recentrage sur position');
-              },
-            ),
-            children: [
-              TileLayer(
-                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                userAgentPackageName: 'com.example.annuaire_scolaire',
-                tileProvider: NetworkTileProvider(),
-              ),
-              if (_polylinePoints.isNotEmpty)
-                PolylineLayer(
-                  polylines: [
-                    Polyline(
-                      points: _polylinePoints,
-                      color: Colors.blue.withOpacity(0.7),
-                      strokeWidth: 6.0,
-                    ),
-                  ],
-                ),
-              if (_currentPosition != null)
-                MarkerLayer(
-                  markers: [
-                    Marker(
-                      width: 50.0,
-                      height: 50.0,
-                      point: _currentPosition!,
-                      child: Container(
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: const Color.fromARGB(
-                            255,
-                            36,
-                            25,
-                            236,
-                          ).withOpacity(0.3),
-                          border: Border.all(
-                            color: const Color.fromARGB(255, 36, 25, 236),
-                            width: 1,
-                          ),
-                        ),
-                        child: const Icon(
-                          Icons.navigation,
-                          color: Color.fromARGB(255, 36, 25, 236),
-                          size: 25,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              if (_etablissements.isNotEmpty && _currentPosition != null)
-                MarkerLayer(markers: _getSchoolMarkers()),
-            ],
-          ),
-
-          if (_isNavigating)
-            Positioned(
-              top: 50,
-              left: 16,
-              right: 16,
-              child: _navigationManager!.buildNavigationHeader(),
-            ),
-
-          if (_isLoading)
-            const Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  CircularProgressIndicator(color: Color(0xff036B54)),
-                  SizedBox(height: 16),
-                  Text('Recherche de votre position...'),
-                ],
-              ),
-            ),
-
-          const Positioned(
-            bottom: 8,
-            left: 8,
-            child: Text(
-              '© OpenStreetMap contributors',
-              style: TextStyle(fontSize: 12, color: Colors.black),
-            ),
-          ),
-
-          Positioned(
-            right: 16,
-            bottom: 80,
-            child: ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xff036B54),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                fixedSize: const Size(57, 57),
-                minimumSize: Size.zero,
-                padding: EdgeInsets.zero,
-                elevation: 6,
-              ),
-              onPressed: () async {
-                setState(() {});
-                final pos = await LocationService.refinePosition();
-                if (pos != null && mounted) {
-                  _locationManager?.setCurrentPosition(
-                    LatLng(pos.latitude, pos.longitude),
-                  );
-                  _moveToCurrentPosition();
-                }
-                setState(() {});
-              },
-              child: const Icon(
-                Icons.center_focus_strong,
-                color: Colors.white,
-                size: 25,
-              ),
-            ),
-          ),
+          _buildMap(),
+          _buildOfflineBanner(),
+          _buildNavigationHeader(),
+          _buildLoadingIndicator(),
+          _buildCopyright(),
+          _buildRefineButton(),
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _isNavigating
-            ? _moveToCurrentPosition
-            : () {
-                if (_currentPosition != null && _mapIsReady) {
-                  _moveToCurrentPosition();
-                } else {
-                  _locationManager?.checkAndRequestLocationService();
-                }
-              },
-        backgroundColor: const Color(0xff036B54),
+        onPressed: () {
+          if (_currentPositionNotifier.value != null && _mapIsReady) {
+            _moveToCurrentPosition();
+          } else {
+            _locationManager.checkAndRequestLocationService();
+          }
+        },
+        backgroundColor: _primaryColor,
+        child: const Icon(Icons.my_location, color: Colors.white),
+      ),
+    );
+  }
+
+  Widget _buildMap() {
+    return FlutterMap(
+      mapController: _mapController,
+      options: MapOptions(
+        initialCenter: _locationManager.currentPosition ?? _defaultLocation,
+        initialZoom: widget.initialZoom,
+        onMapReady: () {
+          _mapIsReady = true;
+          _navigationManager.setMapReady(true);
+          _moveToCurrentPosition();
+        },
+      ),
+      children: [
+        TileLayer(
+          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+          userAgentPackageName: 'com.example.annuaire_scolaire',
+          tileProvider:
+              NetworkTileProvider(), // Attention: Voir note en bas sur le offline
+        ),
+
+        // Couche Itinéraire (Mise à jour isolée)
+        ValueListenableBuilder<List<LatLng>>(
+          valueListenable: _routeNotifier,
+          builder: (context, route, child) {
+            if (route.isEmpty) return const SizedBox.shrink();
+            return PolylineLayer(
+              polylines: [
+                Polyline(
+                  points: route,
+                  color: Colors.blue.withOpacity(0.7),
+                  strokeWidth: 6.0,
+                ),
+              ],
+            );
+          },
+        ),
+
+        // Couches des marqueurs (Mise à jour isolée sur le changement de position)
+        ValueListenableBuilder<LatLng?>(
+          valueListenable: _currentPositionNotifier,
+          builder: (context, position, child) {
+            if (position == null) return const SizedBox.shrink();
+
+            return MarkerLayer(
+              markers: [
+                // 1. Les écoles (calculées par rapport à la position)
+                ..._etablissementManager.getSchoolMarkers(position),
+                // 2. La position de l'utilisateur
+                _buildUserMarker(position),
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Marker _buildUserMarker(LatLng position) {
+    return Marker(
+      width: 50.0,
+      height: 50.0,
+      point: position,
+      child: Container(
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: const Color.fromARGB(255, 36, 25, 236).withOpacity(0.3),
+          border: Border.all(
+            color: const Color.fromARGB(255, 36, 25, 236),
+            width: 1,
+          ),
+        ),
         child: const Icon(
-          Icons.my_location, // Même icône pour les deux cas
+          Icons.navigation,
+          color: Color.fromARGB(255, 36, 25, 236),
+          size: 25,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildOfflineBanner() {
+    return ValueListenableBuilder<bool>(
+      valueListenable: _isOnlineNotifier,
+      builder: (context, isOnline, child) {
+        if (isOnline) return const SizedBox.shrink();
+        return Positioned(
+          top: 40,
+          left: 16,
+          right: 16,
+          child: Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.redAccent.withOpacity(0.9),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Text(
+              "Mode hors-ligne : Carte limitée au cache et navigation désactivée.",
+              style: TextStyle(color: Colors.white, fontSize: 13),
+              textAlign: TextAlign.center,
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildNavigationHeader() {
+    return ValueListenableBuilder<bool>(
+      valueListenable: _isNavigatingNotifier,
+      builder: (context, isNavigating, child) {
+        if (!isNavigating) return const SizedBox.shrink();
+        return Positioned(
+          top: 50,
+          left: 16,
+          right: 16,
+          child: _navigationManager.buildNavigationHeader(),
+        );
+      },
+    );
+  }
+
+  Widget _buildLoadingIndicator() {
+    return ValueListenableBuilder<bool>(
+      valueListenable: _isLoadingNotifier,
+      builder: (context, isLoading, child) {
+        if (!isLoading) return const SizedBox.shrink();
+        return const Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(color: _primaryColor),
+              SizedBox(height: 16),
+              Text('Recherche de votre position...'),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildCopyright() {
+    return const Positioned(
+      bottom: 8,
+      left: 8,
+      child: Text(
+        '© OpenStreetMap contributors',
+        style: TextStyle(fontSize: 12, color: Colors.black),
+      ),
+    );
+  }
+
+  Widget _buildRefineButton() {
+    return Positioned(
+      right: 16,
+      bottom: 80,
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor: _primaryColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          fixedSize: const Size(57, 57),
+          padding: EdgeInsets.zero,
+          elevation: 6,
+        ),
+        onPressed: () async {
+          _isLoadingNotifier.value = true;
+          final pos = await LocationService.refinePosition();
+          if (pos != null && mounted) {
+            _locationManager.setCurrentPosition(
+              LatLng(pos.latitude, pos.longitude),
+            );
+            _moveToCurrentPosition();
+          }
+          _isLoadingNotifier.value = false;
+        },
+        child: const Icon(
+          Icons.center_focus_strong,
           color: Colors.white,
+          size: 25,
         ),
       ),
     );
@@ -394,10 +365,15 @@ class LocalizePageState extends State<LocalizePage>
 
   @override
   void dispose() {
-    _navigationManager?.dispose();
-    _locationManager?.stopListeningLocation();
+    _isOnlineNotifier.dispose();
+    _currentPositionNotifier.dispose();
+    _routeNotifier.dispose();
+    _isNavigatingNotifier.dispose();
+    _isLoadingNotifier.dispose();
 
-    _etablissementManager?.dispose();
+    _navigationManager.dispose();
+    _locationManager.stopListeningLocation();
+    _etablissementManager.dispose();
     _mapController.dispose();
     super.dispose();
   }
